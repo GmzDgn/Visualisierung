@@ -1,0 +1,212 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<style>
+svg {
+ font: 16px"Open Sans";
+}
+
+</style>
+<script src="https://d3js.org/d3.v4.js"></script>
+<script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+  
+<script>
+	var total = 0;
+	obj = [['Location', 'Parent', 'Volume', 'Color'], ["AlleStraftaten", null, 0 ,0]];
+		
+	window.onload = function () { 
+
+
+		d3.csv("tatver.csv", function(data) {
+			var straftat;
+			var straftatAlt = data[0].Straftat;
+			var count=0;
+			var male =0;
+			var female = 0;
+			var sexuality;
+			var strafTatGleich = false;
+			var sexusStrafMale = "";
+			var sexusStrafFemale = "";
+			var anzahl;
+			var colourCount = 0;
+			var straftatenIns = "Straftaten insgesamt";
+			
+			data.forEach(function (d){
+				straftat = d.Straftat;
+				if(straftat == straftatAlt){
+					strafTatGleich = true;
+				} else {
+	
+					strafTatGleich = false;
+					obj.push([
+					straftatAlt.toString(), 
+					"AlleStraftaten",
+					0, 
+					0
+					]);
+					count = 0;
+					straftatAlt = straftat;
+					
+				}
+				if(d.Sexus == "X"){
+					if(d.Sexus == "X"){
+						if(strafTatGleich == true){
+							if(d.Sexus != "NaN"){
+								count = count + (+d.Tatverdaechtige_insgesamt_deutsch);
+								
+							}
+						}
+					}
+				}
+				
+
+			});		
+			
+			data.forEach(function (d){
+							straftat = d.Straftat;
+							if(straftat == straftatAlt){
+								strafTatGleich = true;
+							} else {
+				
+								strafTatGleich = false;
+								obj.push([
+								sexusStrafMale.toString(), 
+								straftatAlt.toString(), 
+								parseInt(male), 
+								parseInt(male),
+								]);
+								count = 0;
+								male = 0;
+								straftatAlt = straftat;
+								
+							}
+							if(d.Sexus == "X"){
+								if(d.Sexus == "X"){
+									if(strafTatGleich == true){
+										if(d.Sexus != "NaN"){
+											count = count + (+d.Tatverdaechtige_insgesamt_deutsch);
+											
+										}
+									}
+								}
+							}
+							
+							if(d.Sexus ==  "M" && d.Straftat!= straftatenIns){
+									if(strafTatGleich == true){
+										if(d.Sexus != "NaN"){
+										male = male + (+d.Tatverdaechtige_insgesamt_deutsch);	
+										sexuality = "male";
+										anzahl = d.Straftat;
+										sexusStrafMale = anzahl.concat(" ",sexuality);	
+										//console.log(sexusStraf);
+										}
+									}
+							}
+						});		
+			
+			data.forEach(function (d){
+						straftat = d.Straftat;
+						if(straftat == straftatAlt){
+							strafTatGleich = true;
+						} else {
+			
+							strafTatGleich = false;
+							obj.push([
+							sexusStrafFemale.toString(), 
+							straftatAlt.toString(), 
+							parseInt(female), 
+							parseInt(female)
+							]);
+							count = 0;
+							female = 0;
+							straftatAlt = straftat;
+							
+						}
+						if(d.Sexus == "X"){
+							if(d.Sexus == "X"){
+								if(strafTatGleich == true){
+									if(d.Sexus != "NaN"){
+										count = count + (+d.Tatverdaechtige_insgesamt_deutsch);
+									}
+								}
+							}
+						}
+						
+						
+						if(d.Sexus ==  "W" && d.Straftat!= straftatenIns){
+								if(strafTatGleich == true){
+									if(d.Sexus != "NaN"){
+										female = female + (+d.Tatverdaechtige_insgesamt_deutsch);		
+										sexuality = "female";
+										anzahl = d.Straftat;
+										sexusStrafFemale = anzahl.concat(" ",sexuality);
+									}
+								}
+						}
+					});		
+
+	google.charts.load('current', {'packages':['treemap']});
+    google.charts.setOnLoadCallback(drawChart);
+     	obj.forEach(function(d){
+					console.log(d);
+					});	
+	function drawChart() {
+        var data = google.visualization.arrayToDataTable(obj);
+        tree = new google.visualization.TreeMap(document.getElementById('chart_div'));
+		
+        tree.draw(data, {
+          minColor: '#819FF7',
+          midColor: '#0e518d',
+          maxColor: '#0B0B3B',
+          headerHeight: 30,
+          fontColor: 'black',
+		   highlightOnMouseOver: true,
+          showScale: true
+        });
+		
+		
+
+      }
+			
+		})
+	}
+</script>
+<title>Non-german suspects</title>
+<meta charset="utf-8">
+<link rel="stylesheet" type="text/css" href="css/style.css">
+</head>
+<body>
+<header>
+  <nav class="main-nav">
+    <ul>
+		  <li><a href="index.html">Home</a></li>
+          <li><a href="choropleth.html">Choropleth</a></li>
+          <li><a href="doughnutchart.html">Doughnut Chart</a></li>
+          <li><a href="treemap.html" class="active">Treemap</a></li>
+    </ul>
+  </nav>
+</header>
+<section id="home-head" class="work">
+  <h1>Non-german suspects in Germany (2014)</h1>
+</section>
+ 
+<section id="main-content">
+ <div class="text-intro">
+    <h2>Treemap</h2>
+	<img src="about.png" width="16" height="16"> A little information: <br>
+	<p align=justify>This  <b>Treemap </b>shows the crimes that are committed in Germany by <b>non-german seniors </b>. The size of the rectangles and the colors show the <b>frequency of the crimes</b>. If the rectangles are bigger
+		and the color is darker, it means that more of this crime has been comitted. <br> <br>After clicking on one of the crimes, the crime will be filtered by gender. With a <b>right-click</b> you get back to the previous hierarchy.
+		By <b> moving with the mouse </b> over the rectangles, it shows the full name of the crime. This is especially useful for very small rectangles. <br>
+		The <b>goal </b> of this visualization is to get a quick impression of the most common crimes. </p>
+  </div>
+  <div class="columns">
+   <br> <br> <br> <br> <br> <br> <br> <br> <br> <br> <br> <br> <br> 
+	 <div id="chart_div" style="width: 900px; height: 500px; margin: auto;"></div>
+  </div>
+</section>
+<footer>
+  <div class="copyright"><small>Copyright. All Rights Reserved | by <a target="_blank" rel="nofollow" href="http://www.iamsupview.be">Supview</a>.<br/> Contacts | <b>Özgün Bas, Martin Watolla, Gamze Dogan</b><br/>Reutlingen University | <b>Human-Centered Computing</b></small></div>
+</footer>
+</body>
+</html>

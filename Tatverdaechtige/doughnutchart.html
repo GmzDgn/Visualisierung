@@ -1,0 +1,526 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<title>Non-german suspects</title>
+<meta charset="utf-8">
+<link rel="stylesheet" type="text/css" href="css/style.css">
+</head>
+<style>
+select { 
+	appearance: none; 
+	outline: 0; 
+	background: #DEDEDE; 
+	width: 25%; 
+	height: 25px; 
+	color: black; 
+	cursor: pointer; 
+	border: 0.1px solid black; 
+	border-radius: 3px; 
+} 
+.select { 
+	position: relative; 
+	display: block; 
+	width: 15em; 
+	height: 2em; 
+	line-height: 3; 
+	overflow: hidden; 
+	border-radius: .25em; 
+	padding-bottom: 10px; 
+} 
+</style>
+<script src="https://d3js.org/d3.v4.js"></script>
+<script src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
+<script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/echarts/echarts.min.js"></script>
+<script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+<script>
+<!-- Variablen Deklaration -->
+jsonObj = [];
+jsonObjSelected = [];
+eObj = [];
+
+var countIns = 0;
+var countSechzigBisFuenfUndSechzig = 0;
+var countFuenfUndSechzigBisSiebzig = 0;
+var countSiebzigBisFuenfUndSiebzig = 0;
+var countFuenfUndSiebzigBisAchtzig = 0;
+var countAchtzigAelter = 0;
+var counts = [];
+
+var countIns2 = 0;
+var countSechzigBisFuenfUndSechzig2 = 0;
+var countFuenfUndSechzigBisSiebzig2 = 0;
+var countSiebzigBisFuenfUndSiebzig2 = 0;
+var countFuenfUndSiebzigBisAchtzig2 = 0;
+var countAchtzigAelter2 = 0;
+var counts2 = []
+
+<!-- Wenn man die Seite öffnet/aktualisiert wird window.onload immer aufgerufen -->
+window.onload = function () {
+<!-- Daten werden aus der CSV-Datei gelesen -->
+d3.csv("tatver.csv", function(data) {
+	<!-- Variablen Deklaration -->
+	var straftat;
+	var straftatAlt = data[0].Straftat;
+	var count = 0;
+	var strafTatGleich = false;
+	var locationGleich = false;
+	var selectedLocation;
+	var title = "Total number of suspects in Germany";
+	
+	<!-- In der ForEach Schleife werden die Daten mit dem gleichen Straftatnamen zusammengefasst und im jsonObj eingefügt -->
+	data.forEach(function (d){
+		<!-- Die Anzahl der Altersgruppen wird zusammengefasst. Wichtig für den E-Chart -->
+		if(d.Straftat == "Straftaten insgesamt"){
+			if(d.Sexus == "X"){
+				countSechzigBisFuenfUndSechzig = countSechzigBisFuenfUndSechzig + (+d.Erwachsene_60_bis_unter_65_Jahre);
+				countFuenfUndSechzigBisSiebzig = countFuenfUndSechzigBisSiebzig + (+d.Erwachsene_65_bis_unter_70_Jahre);
+				countSiebzigBisFuenfUndSiebzig = countSiebzigBisFuenfUndSiebzig + (+d.Erwachsene_70_bis_unter_75_Jahre);
+				countFuenfUndSiebzigBisAchtzig = countFuenfUndSiebzigBisAchtzig + (+d.Erwachsene_75_bis_unter_80_Jahre);
+				countAchtzigAelter = countAchtzigAelter + (+d.Erwachsene_80_Jahre_und_aelter);
+			}
+		}
+	
+		straftat = d.Straftat;
+		if(straftat == straftatAlt){
+			strafTatGleich = true;
+		} else {
+			strafTatGleich = false;	
+			var stringWithParagraph = straftatAlt;
+			<!-- Der Paragraph am Ende des Satzes wird herausgefiltert -->
+			if(stringWithParagraph.indexOf('\xA7') != -1){
+				straftatAlt = stringWithParagraph.substring(0, stringWithParagraph.indexOf('\xA7'));	
+			}
+			jsonObj.push({
+				y: parseInt(count), 
+				label: "'" + straftatAlt + "'"
+			});
+			count = 0;
+			straftatAlt = straftat;
+		}
+		if(d.Sexus == "X"){
+			if(d.Sexus == "X"){
+				if(strafTatGleich == true){
+					if(d.Sexus != "NaN"){
+						count = count + (+d.Tatverdaechtige_insgesamt_deutsch);
+					}
+				}
+			}
+		}		
+	});		
+	
+	<!-- countIns wird für den E-Chart benötigt (= maxData) -->
+	countIns = countIns + countSechzigBisFuenfUndSechzig + countFuenfUndSechzigBisSiebzig +
+	countSiebzigBisFuenfUndSiebzig + countFuenfUndSiebzigBisAchtzig + countAchtzigAelter;
+	
+	<!-- Das erste Objekte im Array (Straftaten Insgesamt) wird herausgefiltert -->
+	jsonObj.shift();
+	
+	<!-- Einstellungen für das Dropdown-Menue -->
+	var location = d3.map(data, function(d){return (d.Stadt_Landkreis)}).keys()
+	d3.select("#location")
+	  .selectAll('myOptions')
+	  .data(location)
+	  .enter()
+	  .append('option')
+	  .text(function (d) { return d; })
+	  .attr("value", function (d) { return d; })
+	
+	<!-- Das ist ein Event von dem Dropdown-Menue. Wenn eine Stadt ausgewaehlt wird, wird der Stadtname in title eingespeichert -->
+	d3.select("#location").on("change", function(d) {
+		myChart.clear();
+		selectedLocation = d3.select(this).property("value")
+		title = selectedLocation;
+		
+		jsonObjSelected = [];
+		
+		countIns2 = 0;
+		countSechzigBisFuenfUndSechzig2 = 0;
+		countFuenfUndSechzigBisSiebzig2 = 0;
+		countSiebzigBisFuenfUndSiebzig2 = 0;
+		countFuenfUndSiebzigBisAchtzig2 = 0;
+		countAchtzigAelter2 = 0;
+		counts2 = []
+
+		<!-- Hier werden die Altersgruppen fuer die ausgewaehlte Stadt fuer den zweiten E-Chart zusammengefasst  -->
+		data.forEach(function (d){
+		if(title == d.Stadt_Landkreis){
+			if(d.Sexus == "X"){
+				countSechzigBisFuenfUndSechzig2 = countSechzigBisFuenfUndSechzig2 + (+d.Erwachsene_60_bis_unter_65_Jahre);
+				countFuenfUndSechzigBisSiebzig2 = countFuenfUndSechzigBisSiebzig2 + (+d.Erwachsene_65_bis_unter_70_Jahre);
+				countSiebzigBisFuenfUndSiebzig2 = countSiebzigBisFuenfUndSiebzig + (+d.Erwachsene_70_bis_unter_75_Jahre);
+				countFuenfUndSiebzigBisAchtzig2 = countFuenfUndSiebzigBisAchtzig2 + (+d.Erwachsene_75_bis_unter_80_Jahre);
+				countAchtzigAelter2 = countAchtzigAelter2 + (+d.Erwachsene_80_Jahre_und_aelter);
+			}
+		}
+		
+		if(d.Straftat != "Straftaten insgesamt"){
+			straftat = d.Straftat;
+			if(straftat == straftatAlt){
+				strafTatGleich = true;
+			} else {
+				strafTatGleich = false;	
+				var stringWithParagraph = straftatAlt;
+				if(stringWithParagraph.indexOf('\xA7') != -1){
+					straftatAlt = stringWithParagraph.substring(0, stringWithParagraph.indexOf('\xA7'));	
+				}
+				jsonObjSelected.push({
+					y: parseInt(count), 
+					label: "'" + straftatAlt + "'"
+				});
+				count = 0;
+				straftatAlt = straftat;
+			}
+			if(selectedLocation == d.Stadt_Landkreis){
+				if(d.Sexus == "X"){
+					if(d.Sexus == "X"){
+						if(strafTatGleich == true){
+							if(d.Sexus != "NaN"){
+								count = count + (+d.Tatverdaechtige_insgesamt_deutsch);
+							}
+						}
+					}
+				}
+			}
+		} else {
+		}		
+		});		
+		
+		countIns2 = countIns2 + countSechzigBisFuenfUndSechzig2 + countFuenfUndSechzigBisSiebzig2 +
+		countSiebzigBisFuenfUndSiebzig2 + countFuenfUndSiebzigBisAchtzig2 + countAchtzigAelter2;
+		
+		// CANVAS-Chart fuer die ausgewaehlte Stadt
+		var chart = new CanvasJS.Chart("chartContainer", {
+			animationEnabled: true,
+			height: 405,
+			title:{
+			fontFamily: "Open Sans",
+			fontSize: 16,
+			fontColor: "#2a3b8e",
+			text: title,
+			horizontalAlign: "center"
+			},
+			data: [{
+				type: "doughnut",
+				startAngle: 60,
+				indexLabelFontSize: 12,
+				indexLabel: "{label} - #percent%",
+				toolTipContent: "<b>{label}:</b> {y} (#percent%)",
+				dataPoints: jsonObjSelected
+			}]
+		});
+		chart.render();	
+		
+		// E-Chart fuer die ausgewaehlte Stadt
+		var dom = document.getElementById("container");
+		var eCahrt = echarts.init(dom);
+		var app = {};
+		option = null;
+		var spirit;
+		var maxData2 = countIns2;
+		option = {
+			tooltip: {
+			},
+			width: 400,
+			height: 200,
+			xAxis: {
+				max: maxData2,
+				splitLine: {show: false},
+				offset: 10,
+				axisLine: {
+					lineStyle: {
+						color: '#999'
+					}
+				},
+				axisLabel: {
+					margin: 10,
+					textStyle: {
+						color: '#999',
+						fontStyle: 'Open Sans',
+						fontSize: 16
+					}
+				}
+			},
+			yAxis: {
+				data: ['80+', '76 - 79', '70 - 75', '65 - 69', '60 - 64'],
+				inverse: true,
+				axisTick: {show: false},
+				axisLine: {show: false},
+				axisLabel: {
+					margin: 10,
+					textStyle: {
+						color: '#999',
+						fontSize: 16,
+						fontStyle: 'Open Sans'
+					}
+				}
+			},
+			grid: {
+				top: 'center',
+				height: 100,
+				left: 70,
+				right: 100
+			},
+			series: [{
+				type: 'pictorialBar',
+				symbol: spirit,
+				symbolRepeat: 'fixed',
+				symbolMargin: '5%',
+				symbolClip: true,
+				symbolSize: 15,
+				symbolBoundingData: maxData2,
+				data: [countAchtzigAelter2, countFuenfUndSiebzigBisAchtzig2, 
+				countSiebzigBisFuenfUndSiebzig2, countFuenfUndSechzigBisSiebzig2, countSechzigBisFuenfUndSechzig2],
+				markLine: {
+					symbol: 'none',
+					label: {
+						normal: {
+							formatter: 'max: {c}',
+							position: 'start'
+						}
+					},
+					lineStyle: {
+						normal: {
+							color: '#2a3b8e',
+							type: 'dotted',
+							opacity: 0.2,
+							width: 2
+						}
+					},
+					data: [{
+						type: 'max'
+					}]
+				},
+				z: 10
+			}, {
+				type: 'pictorialBar',
+				itemStyle: {
+					normal: {
+						opacity: 0.2
+					}
+				},
+				label: {
+					normal: {
+						show: true,
+						formatter: function (params) {
+							return (params.value / maxData2 * 100).toFixed(1) + ' %';
+						},
+						position: 'right',
+						offset: [10, 0],
+						textStyle: {
+							color: 'black',
+							fontStyle: 'Open Sans',
+							fontSize: 18
+						}
+					}
+				},
+				animationDuration: 0,
+				symbolRepeat: 'fixed',
+				symbolMargin: '5%',
+				symbol: spirit,
+				symbolSize: 15,
+				symbolBoundingData: maxData2,
+				data: [countAchtzigAelter2, countFuenfUndSiebzigBisAchtzig2, countSiebzigBisFuenfUndSiebzig2, countFuenfUndSechzigBisSiebzig2, countSechzigBisFuenfUndSechzig2],
+				z: 5
+			}]
+		};
+
+		if (option && typeof option === "object") {
+			eCahrt.setOption(option, true);
+		}
+
+	})
+	
+	//Der erste E-chart
+	var dom = document.getElementById("container");
+	var myChart = echarts.init(dom);
+	var app = {};
+	option = null;
+	var spirit;
+	var maxData = countIns;
+	
+	option = {
+		tooltip: {
+		},
+		width: 400,
+		height: 200,
+		xAxis: {
+			max: maxData,
+			splitLine: {show: false},
+			offset: 10,
+			axisLine: {
+				lineStyle: {
+					color: '#999'
+				}
+			},
+			axisLabel: {
+				margin: 10,
+				textStyle: {
+					color: '#999',
+					fontStyle: 'Open Sans',
+					fontSize: 16
+				}
+			}
+		},
+		yAxis: {
+			data: ['80+', '76 - 79', '70 - 75', '65 - 69', '60 - 64'],
+			inverse: true,
+			axisTick: {show: false},
+			axisLine: {show: false},
+			axisLabel: {
+				margin: 10,
+				textStyle: {
+					color: '#999',
+					fontSize: 16,
+					fontStyle: 'Open Sans'
+				}
+			}
+		},
+		grid: {
+			top: 'center',
+			height: 100,
+			left: 70,
+			right: 100
+		},
+		series: [{
+			type: 'pictorialBar',
+			symbol: spirit,
+			symbolRepeat: 'fixed',
+			symbolMargin: '5%',
+			symbolClip: true,
+			symbolSize: 15,
+			symbolBoundingData: maxData,
+			data: [countAchtzigAelter, countFuenfUndSiebzigBisAchtzig, 
+			countSiebzigBisFuenfUndSiebzig, countFuenfUndSechzigBisSiebzig, countSechzigBisFuenfUndSechzig],
+			markLine: {
+				symbol: 'none',
+				label: {
+					normal: {
+						formatter: 'max: {c}',
+						position: 'start'
+					}
+				},
+				lineStyle: {
+					normal: {
+						color: '#2a3b8e',
+						type: 'dotted',
+						opacity: 0.2,
+						width: 2
+					}
+				},
+				data: [{
+					type: 'max'
+				}]
+			},
+			z: 10
+		}, {
+			type: 'pictorialBar',
+			itemStyle: {
+				normal: {
+					opacity: 0.2
+				}
+			},
+			label: {
+				normal: {
+					show: true,
+					formatter: function (params) {
+						return (params.value / maxData * 100).toFixed(1) + ' %';
+					},
+					position: 'right',
+					offset: [10, 0],
+					textStyle: {
+						color: 'black',
+						fontStyle: 'Open Sans',
+						fontSize: 18
+					}
+				}
+			},
+			animationDuration: 0,
+			symbolRepeat: 'fixed',
+			symbolMargin: '5%',
+			symbol: spirit,
+			symbolSize: 15,
+			symbolBoundingData: maxData,
+			data: [countAchtzigAelter, countFuenfUndSiebzigBisAchtzig, countSiebzigBisFuenfUndSiebzig, countFuenfUndSechzigBisSiebzig, countSechzigBisFuenfUndSechzig],
+			z: 5
+		}]
+	};
+
+	if (option && typeof option === "object") {
+		myChart.setOption(option, true);
+	}
+	
+	
+	// Der erste CANVAS-Chart
+	var chart = new CanvasJS.Chart("chartContainer", {
+		animationEnabled: true,
+		height: 405,
+		title:{
+		fontFamily: "Open Sans",
+		fontSize: 16,
+		fontColor: "#2a3b8e",
+		text: title,
+		horizontalAlign: "center"
+		},
+		data: [{
+			type: "doughnut",
+			startAngle: 60,
+			indexLabelFontSize: 12,
+			indexLabel: "{label} - #percent%",
+			toolTipContent: "<b>{label}:</b> {y} (#percent%)",
+			dataPoints: jsonObj
+		}]
+	});
+	chart.render();
+	
+})
+	
+// Dimension und Margin vom Graph
+var margin = {top: 10, right: 30, bottom: 30, left: 60},
+	width = 460 - margin.left - margin.right,
+	height = 400 - margin.top - margin.bottom;
+	
+}
+</script>
+<body>
+<header>
+  <nav class="main-nav">
+    <ul>
+		  <li><a href="index.html">Home</a></li>
+          <li><a href="choropleth.html">Choropleth</a></li>
+          <li><a href="barchart.html" class="active">Doughnut Chart</a></li>
+          <li><a href="treemap.html">Treemap</a></li>
+    </ul>
+  </nav>
+</header>
+<section id="home-head" class="work">
+  <h1>Non-german suspects in Germany (2014)</h1>
+</section>
+<section id="main-content">
+  <div class="text-intro">
+      <h2>Doughnut Chart</h2>
+	  <img src="about.png" width="16" height="16"> A little information:
+	  <p/><p align=justify> This <b>Doughnut Chart</b> shows you in the first place the <b>percentage of the crimes</b> from all the cities together. It is divided into several sectors per crime. 
+	  The size of a sector shows you the proportion of the percentage. <br/>
+	  The <b>interaction</b> takes place via a dropdown menu. You can choose any city from Germany. If a city is selected the Doughnut Chart will change depending on the selected value.
+	  You can get more information with the <b>tooltip</b>. It shows you the percentage and the number of the offenders.
+	  <p/><br/>Above the Doughnut Chart a <b>Bar Chart</b> has been implemented. 
+	  This displays the <b>number of suspects per age group</b>. <br/>The x-axis includes the age groups from 60 to over 80.  
+	  To the right of the x-axis, the percentages of each age group are dynamically adjusted and displayed after each filtering.
+	  The y-axis is the total number of suspects.
+	  <br/>The <b>interaction</b> in this chart also takes place via the dropdown menu. With the additional <b>tooltip</b> you can get more information.
+  </div>
+  <div class="columns">
+  Please select a location:<p/>
+	<select id="location"></select>
+	<p/><center><h6><b>Number of suspects by age groups</b></h6>
+	<div id="container"></div></center>
+
+	<div id="chartContainer"></div>
+	<div id="divEmpty"></div>
+  </div>
+</section>
+<footer>
+  <div class="copyright"><small>Copyright. All Rights Reserved | by <a target="_blank" rel="nofollow" href="http://www.iamsupview.be">Supview</a>.<br/> Contacts | <b>Özgün Bas, Martin Watolla, Gamze Dogan</b><br/>Reutlingen University | <b>Human-Centered Computing</b></small></div>
+</footer>
+</body>
+</html>

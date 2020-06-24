@@ -1,0 +1,356 @@
+<!DOCTYPE HTML>
+<style>
+	select { 
+		appearance: none; 
+		outline: 0; 
+		background: #DEDEDE; 
+		width: 35%; 
+		height: 25px; 
+		color: black; 
+		cursor: pointer; 
+		border: 0.1px solid black; 
+		border-radius: 3px; 
+	} 
+	.select { 
+		position: relative; 
+		display: block; 
+		width: 15em; 
+		height: 2em; 
+		line-height: 3; 
+		overflow: hidden; 
+		border-radius: .25em; 
+		padding-bottom: 10px; 
+	} 
+
+	<!-- .states :hover { -->
+		<!-- fill: red; -->
+	<!-- } -->
+	.states {
+		fill: none;
+		stroke: #fff;
+		stroke-linejoin: round;
+	}
+	
+	.legendThreshold {
+		font-size: 12px;
+		font-family: sans-serif;
+	}
+	
+	.caption {
+		font-size: 15px;
+		fill: #000;
+		text-anchor: start;
+		font-weight: bold;
+	  }
+	
+	.tooltip {
+		position: absolute;
+		padding: 7px;
+		font-size: 0.9em;
+		pointer-events: none;
+		background: #fff;
+		border: 1px solid #ccc;
+		border-radius: 4px;
+
+		-moz-box-shadow:    3px 3px 10px 0px rgba(0, 0, 0, 0.25);
+		-webkit-box-shadow: 3px 3px 10px 0px rgba(0, 0, 0, 0.25);
+		box-shadow:         3px 3px 10px 0px rgba(0, 0, 0, 0.25);
+	}
+
+	.tooltip p {
+		margin: 0;
+		padding: 0;
+	}
+
+	.tooltip table {
+		margin: 0;
+		padding: 0;
+		border-collapse: collapse;
+	}
+	.wide {
+		width: 140px;
+	}
+	
+</style>
+<html>
+<head>
+<title>Choropleth</title>
+<meta charset="utf-8">
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script src="https://d3js.org/topojson.v2.min.js"></script>
+<script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+<script src="https://d3js.org/d3-geo-projection.v2.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3-legend/2.24.0/d3-legend.js"></script>
+<script src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script>
+
+
+
+<link rel="stylesheet" type="text/css" href="css/style.css">
+</head>
+<body>
+<header>
+  <nav class="main-nav">
+    <ul>
+		  <li><a href="index.html">Home</a></li>
+          <li><a href="choropleth.html" class="active">Choropleth</a></li>
+          <li><a href="doughnutchart.html">Doughnut Chart</a></li>
+          <li><a href="treemap.html">Treemap</a></li>
+    </ul>
+  </nav>
+</header>
+<section id="home-head" class="work">
+  <h1>Non-german suspects in Germany (2014)</h1>
+</section>
+<section id="main-content">
+  <div class="text-intro">
+    <h2>Choropleth</h2>
+	<img src="about.png" width="16" height="16"> A little information:
+	<p align=justify>The <b>Choropleth</b> shows a map of Germany with <b>regions and cities of Germany</b>. 
+	The <b>crimes</b> can be filtered on the choropleth. These are then displayed in color on the map. 
+	The <b>darker the region/city, the more crimes have been committed</b>. The crimes for men and women are displayed in colour.
+	The crimes can be selected using a dropdown filter.</p> 
+	<p align=justify>To the left of the map, there is a legend for colour differentiation. 
+	As soon as the <b>mouse is moved over a region/city</b>, the name of the region/city, the number of crimes for male, 
+	the number of crimes for female and the total number of crimes for male and female for the selected crimes are displayed.</p>
+	<p align=justify>The regions/cities <b>highlighted in grey</b> do not provide any data as they are <b>not included</b> in the data set. 
+	This has been regulated because the German map would not be displayed completely without these regions/cities.
+	These data are <b>marked as undefined</b>.</p>
+  </div>
+  <div class="columns">
+	Please select a crime:<p/>
+	<select id="crimes" width=50px></select>
+	</br>
+	</br>
+	</br>
+	<svg width="1500" height="700"></svg>
+    <script>
+		// The svg
+		var svg = d3.select("svg"),
+			width = +svg.attr("width"),
+			height = +svg.attr("height");
+		
+		// Map and projection
+		var path = d3.geoPath();
+		var projection = d3.geoMercator()
+		  .scale(3000)
+		  .center([15,51.2])
+		  .translate([width / 2, height / 2]);
+		  
+		// Data and color scale
+		var data = d3.map();
+		var colorScheme = d3.schemeBlues[7];
+		colorScheme.unshift("#eee")
+		var colorScale = d3.scaleThreshold()
+		  .domain([10, 50, 200, 500, 1000, 5000, 15000, 25000, 38000, 52000])
+		  .range(colorScheme);
+		
+		//For the mousover
+		tooltip = d3.select("body").append("div")
+			.attr("class", "tooltip")
+			.style("opacity", 0);
+		
+		// Legend
+		var g = svg.append("g")
+			.attr("class", "legendThreshold")
+			.attr("transform", "translate(20,20)");
+		g.append("text")
+			.attr("class", "caption")
+			.attr("x", 0)
+			.attr("y", -8)
+			.text("Total suspects per city");
+			
+		var labels = ['0-10', '11-100', '101-500', '501-1500', '1501-8000', '8001-15000', '15001-30000', '30001-51000'];
+		var legend = d3.legendColor()
+			.labels(function (d) { return labels[d.i]; })
+			.shapePadding(10)
+			.scale(colorScale);
+		svg.select(".legendThreshold")
+			.call(legend);
+		
+		// Load external data and boot
+		d3.queue()
+			.defer(d3.json, "germany.json")
+			.defer(d3.csv, "tatver.csv") 
+			.await(ready);
+		
+		
+		function ready(error, de, tatver) {
+			if (error) throw error;	
+			
+			var selectedCrime;
+			
+			//Safes the crimes into a variable
+			var crimes = d3.map(tatver, function(d){return (d.Straftat)}).keys()
+			
+			//fill the dropdown filter with the crimes
+			d3.select("#crimes")
+			  .selectAll('myOptions')
+			  .data(crimes)
+			  .enter()
+			  .append('option')
+			  .text(function (d) { return d; }) // text showed in the menu
+			  .attr("value", function (d) { return d; }) // corresponding value returned by the button
+			
+				//Merge the agriculture and GeoJSON data
+				//Loop through once for each agriculture data value
+				for(var i = 0; i < tatver.length; i++){
+				  // grab state name
+				  var dataState = tatver[i].Stadt_Landkreis;
+				  //grab data value
+				  var dataValue = tatver[i].Tatverdaechtige_insgesamt_deutsch;
+				  var dataValueMale = tatver[i].Tatverdaechtige_insgesamt_deutsch;
+				  var dataValueFemale = tatver[i].Tatverdaechtige_insgesamt_deutsch;
+				  var dataCrime = tatver[i].Straftat;
+				  var dataGender = tatver[i].Sexus;
+
+				  //find the corresponding state inside the GeoJSON
+				  for(var n = 0; n < de.features.length; n++){
+
+					// properties name gets the states name
+					var deState = de.features[n].id;
+					// if statment to merge by name of state
+					if(dataState == deState && dataCrime == "Straftaten insgesamt" && dataGender == "X"){
+						//Copy the data value into the JSON
+						// basically creating a new value column in JSON data
+						de.features[n].properties.value = dataValue;
+						//stop looking through the JSON
+						break;
+					}
+					if(dataState == deState && dataCrime == "Straftaten insgesamt" && dataGender == "M"){
+						de.features[n].properties.valueMale = dataValueMale;
+						break;
+					}
+					if(dataState == deState && dataCrime == "Straftaten insgesamt" && dataGender == "W"){
+						de.features[n].properties.valueFemale = dataValueFemale;
+						break;
+					}
+				  }
+				}
+			//draw the map with color  
+			svg.append("g")
+					.attr("class", "states")
+					.selectAll("path")
+					.data(de.features)
+					.enter()
+					.append("path")
+					.attr("d", d3.geoPath().projection(projection))
+					.attr("fill", function (d) {
+						//get the data value
+						var value = d.properties.value;
+						if(value){
+						  //If value exists
+						  return colorScale(value);
+						} else {
+						  // If value is undefined
+						  return "#ccc"
+						}
+					})
+					.on("mouseover", function(d) {
+						tooltip.transition()
+						.duration(250)
+						.style("opacity", 1);
+						tooltip.html(
+						"<p><strong>" + d.id + "</strong></p>" +
+						"<table><tbody><tr><td class='wide'>Crime Male:</td><td>" + " " + d.properties.valueMale + "</td></tr>" +
+						"<tr><td>Crime Female:</td><td>" + d.properties.valueFemale + "</td></tr>" +
+						"<tr><td>Crime Both:</td><td>" + d.properties.value + "</td></tr></tbody></table>"
+						)
+						.style("left", (d3.event.pageX + 15) + "px")
+						.style("top", (d3.event.pageY - 28) + "px");
+					})
+					.on("mouseout", function(d) {
+						tooltip.transition()
+						.duration(250)
+						.style("opacity", 0);
+					});
+			
+			//Do all the steps for the filter selection
+			d3.select("#crimes").on("change", function(d) {
+				selectedCrime = d3.select(this).property("value")
+				title = selectedCrime;
+			
+				
+				//Merge the agriculture and GeoJSON data
+				//Loop through once for each agriculture data value
+				for(var i = 0; i < tatver.length; i++){
+				  // grab state name
+				  var dataState = tatver[i].Stadt_Landkreis;
+				  //grab data value
+				  var dataValue = tatver[i].Tatverdaechtige_insgesamt_deutsch;
+				  var dataValueMale = tatver[i].Tatverdaechtige_insgesamt_deutsch;
+				  var dataValueFemale = tatver[i].Tatverdaechtige_insgesamt_deutsch;
+				  var dataCrime = tatver[i].Straftat;
+				  var dataGender = tatver[i].Sexus;
+
+				  //find the corresponding state inside the GeoJSON
+				  for(var n = 0; n < de.features.length; n++){
+
+					// properties name gets the states name
+					var deState = de.features[n].id;
+					// if statment to merge by name of state
+					if(dataState == deState && dataCrime == selectedCrime && dataGender == "X"){
+						//Copy the data value into the JSON
+						// basically creating a new value column in JSON data
+						de.features[n].properties.value = dataValue;
+						//stop looking through the JSON
+						break;
+					}
+					if(dataState == deState && dataCrime == selectedCrime && dataGender == "M"){
+						de.features[n].properties.valueMale = dataValueMale;
+						break;
+					}
+					if(dataState == deState && dataCrime == selectedCrime && dataGender == "W"){
+						de.features[n].properties.valueFemale = dataValueFemale;
+						break;
+					}
+				  }
+				}
+				//draw the map with color
+				svg.append("g")
+					.attr("class", "states")
+					.selectAll("path")
+					.data(de.features)
+					.enter()
+					.append("path")
+					.attr("d", d3.geoPath().projection(projection))
+					.attr("fill", function (d) {
+						//get the data value
+						var value = d.properties.value;
+						if(value){
+						  //If value exists
+						  return colorScale(value);
+						} else {
+						  // If value is undefined
+						  return "#ccc"
+						}
+					})
+					.on("mouseover", function(d) {
+						tooltip.transition()
+						.duration(250)
+						.style("opacity", 1);
+						tooltip.html(
+						"<p><strong>" + d.id + "</strong></p>" +
+						"<table><tbody><tr><td class='wide'>Crime Male: </td><td>" + d.properties.valueMale + "</td></tr>" +
+						"<tr><td>Crime Female:</td><td>" + d.properties.valueFemale + "</td></tr>" +
+						"<tr><td>Crime Both:</td><td>" + d.properties.value + "</td></tr></tbody></table>"
+						)
+						.style("left", (d3.event.pageX + 15) + "px")
+						.style("top", (d3.event.pageY - 28) + "px");
+					})
+					.on("mouseout", function(d) {
+						tooltip.transition()
+						.duration(250)
+						.style("opacity", 0);
+					});
+			})
+		}
+	
+	</script>
+  </div>
+  </div>
+</section>
+<footer>
+  <div class="copyright"><small>Copyright. All Rights Reserved | by <a target="_blank" rel="nofollow" href="http://www.iamsupview.be">Supview</a>.<br/> Contact | <b>Özgün Bas, Martin Watolla, Gamze Dogan</b><br/>Reutlingen University | <b>Human-Centered Computing</b></small></div>
+</footer>
+</body>
+</html>
